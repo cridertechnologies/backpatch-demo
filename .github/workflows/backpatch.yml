@@ -1,4 +1,5 @@
 name: Backpatch demo
+# demo CI — report-only
 
 on:
   push:
