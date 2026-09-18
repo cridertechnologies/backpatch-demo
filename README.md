@@ -10,7 +10,8 @@ This is **not** a delete guarantee and **not** a before→after flip story.
 
 ## See it run
 
-Open the latest green [Actions run](https://github.com/cridertechnologies/backpatch-demo/actions) for the job summary table.
+1. Follow the **[Action quickstart](https://backpatch.dev/action?utm_source=github&utm_medium=demo_repo&utm_campaign=action_try)** (`fail-on: never` → Pro trial).
+2. Then check the [latest Actions run](https://github.com/cridertechnologies/backpatch-demo/actions) on this repo for the job summary (report-only — a green check needs a valid `BACKPATCH_API_KEY` secret).
 
 ## Try it in 5 minutes
 
