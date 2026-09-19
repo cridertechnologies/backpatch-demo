@@ -19,11 +19,12 @@ jobs:
           set -euo pipefail
           MODE=demo
           if [ -n "${BACKPATCH_API_KEY:-}" ]; then
+            body=$(jq -n --rawfile pj package.json '{packageJson:$pj, lockfileContent:null}')
             code=$(curl -sS -o /tmp/bp-api.json -w '%{http_code}' \
-              -X POST "$API_URL/v1/analyze" \
+              -X POST "$API_URL/analyze_overrides" \
               -H "Content-Type: application/json" \
               -H "X-API-Key: $BACKPATCH_API_KEY" \
-              --data-binary @package.json || echo "000")
+              -d "$body" || echo "000")
             echo "Live API HTTP $code"
             if [ "$code" = "200" ]; then
               MODE=live
@@ -52,7 +53,7 @@ jobs:
           {
             echo "## Backpatch demo — report-only (demo mode)"
             echo
-            echo "> Live API analysis was skipped or rejected (missing/invalid \`BACKPATCH_API_KEY\`)."
+            echo "> Live API analysis was skipped or rejected (missing or invalid \`BACKPATCH_API_KEY\`)."
             echo "> Showing the **after-only fixture expectation** so this public demo stays honest and green."
             echo
             echo "| Package | Override | Expected status | Notes |"
