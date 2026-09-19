@@ -1,5 +1,4 @@
 name: Backpatch demo
-# demo CI — report-only
 
 on:
   push:
@@ -12,8 +11,45 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: "Report stale overrides (fail-on: never)"
+        id: live
+        continue-on-error: true
         uses: cridertechnologies/backpatch-action@v1
         with:
           api-key: ${{ secrets.BACKPATCH_API_KEY }}
           fail-on: never
+
+      - name: Demo fixture report (missing or invalid API key)
+        if: steps.live.outcome != 'success'
+        env:
+          KEY_SET: ${{ secrets.BACKPATCH_API_KEY != '' }}
+        run: |
+          set -euo pipefail
+          {
+            echo "## Backpatch demo — report-only (demo mode)"
+            echo
+            echo "> Live API analysis was skipped or failed (missing/invalid \`BACKPATCH_API_KEY\`)."
+            echo "> Showing the **after-only fixture expectation** so this public demo stays honest and green."
+            echo
+            echo "| Package | Override | Expected status | Notes |"
+            echo "| --- | --- | --- | --- |"
+            echo "| \`@sailshq/request@2.88.3\` | \`tough-cookie@4.1.3\` | **SafeToRemove** | Parent already declares exact \`tough-cookie@4.1.3\`; override is redundant. Report-only — you review; you decide. |"
+            echo
+            echo "**Claim bar:** trial + \`fail-on: never\`. Not a delete guarantee."
+            echo
+            echo "**Try it:** [Action quickstart](https://backpatch.dev/action?utm_source=github\&utm_medium=demo_repo\&utm_campaign=action_try)"
+            if [ "$KEY_SET" = "true" ]; then
+              echo
+              echo "::notice title=Demo mode::BACKPATCH_API_KEY is set but live analysis did not succeed (often 401). Fixture report used instead."
+            else
+              echo
+              echo "::notice title=Demo mode::BACKPATCH_API_KEY missing. Fixture report used instead."
+            fi
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "demo_mode=true" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Annotate live PASS
+        if: steps.live.outcome == 'success'
+        run: echo "::notice title=Live API::backpatch-action@v1 completed with fail-on: never."
