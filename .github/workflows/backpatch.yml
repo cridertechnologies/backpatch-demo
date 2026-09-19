@@ -2,6 +2,7 @@ name: Backpatch demo
 
 on:
   push:
+  pull_request:
   workflow_dispatch:
 
 jobs:
@@ -9,9 +10,58 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Demo mode fixture report
+
+      - name: Analyze overrides (live API or honest demo mode)
+        env:
+          BACKPATCH_API_KEY: ${{ secrets.BACKPATCH_API_KEY }}
+          API_URL: https://api.backpatch.dev
         run: |
-          echo "## Demo mode fixture report" >> "$GITHUB_STEP_SUMMARY"
-          echo "SafeToRemove: tough-cookie override (after-only sailshq fixture)" >> "$GITHUB_STEP_SUMMARY"
-          echo "::notice title=Demo mode::Fixture report only (no API key required)."
+          set -euo pipefail
+          MODE=demo
+          if [ -n "${BACKPATCH_API_KEY:-}" ]; then
+            code=$(curl -sS -o /tmp/bp-api.json -w '%{http_code}' \
+              -X POST "$API_URL/v1/analyze" \
+              -H "Content-Type: application/json" \
+              -H "X-API-Key: $BACKPATCH_API_KEY" \
+              --data-binary @package.json || echo "000")
+            echo "Live API HTTP $code"
+            if [ "$code" = "200" ]; then
+              MODE=live
+            else
+              echo "::warning title=Live API unavailable::HTTP $code — falling back to demo-mode fixture report (missing/invalid key treated the same)."
+            fi
+          else
+            echo "::notice title=Demo mode::BACKPATCH_API_KEY not set — fixture report only."
+          fi
+
+          if [ "$MODE" = "live" ]; then
+            {
+              echo "## Backpatch — live API (fail-on: never)"
+              echo
+              echo '```json'
+              cat /tmp/bp-api.json
+              echo
+              echo '```'
+              echo
+              echo "**Claim bar:** report-only. Not a delete guarantee."
+            } | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "::notice title=Live API::Analysis succeeded."
+            exit 0
+          fi
+
+          {
+            echo "## Backpatch demo — report-only (demo mode)"
+            echo
+            echo "> Live API analysis was skipped or rejected (missing/invalid \`BACKPATCH_API_KEY\`)."
+            echo "> Showing the **after-only fixture expectation** so this public demo stays honest and green."
+            echo
+            echo "| Package | Override | Expected status | Notes |"
+            echo "| --- | --- | --- | --- |"
+            echo "| \`@sailshq/request@2.88.3\` | \`tough-cookie@4.1.3\` | **SafeToRemove** | Parent already declares exact \`tough-cookie@4.1.3\`; override is redundant. Report-only — you review; you decide. |"
+            echo
+            echo "**Claim bar:** trial + \`fail-on: never\`. Not a delete guarantee."
+            echo
+            echo "**Try it:** [Action quickstart](https://backpatch.dev/action?utm_source=github&utm_medium=demo_repo&utm_campaign=action_try)"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "::notice title=Demo mode::Wrote honest fixture report; exiting 0."
           exit 0
