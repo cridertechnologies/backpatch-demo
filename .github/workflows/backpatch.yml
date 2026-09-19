@@ -2,7 +2,6 @@ name: Backpatch demo
 
 on:
   push:
-    branches: [main]
   pull_request:
   workflow_dispatch:
 
@@ -12,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: "Report stale overrides (fail-on: never)"
+      - name: Try live Backpatch Action
         id: live
         continue-on-error: true
         uses: cridertechnologies/backpatch-action@v1
@@ -20,16 +19,14 @@ jobs:
           api-key: ${{ secrets.BACKPATCH_API_KEY }}
           fail-on: never
 
-      - name: Demo fixture report (missing or invalid API key)
+      - name: Demo mode fixture report
         if: steps.live.outcome != 'success'
-        env:
-          KEY_SET: ${{ secrets.BACKPATCH_API_KEY != '' }}
         run: |
           set -euo pipefail
           {
             echo "## Backpatch demo — report-only (demo mode)"
             echo
-            echo "> Live API analysis was skipped or failed (missing/invalid \`BACKPATCH_API_KEY\`)."
+            echo "> Live API analysis was skipped or failed (missing or invalid \`BACKPATCH_API_KEY\`)."
             echo "> Showing the **after-only fixture expectation** so this public demo stays honest and green."
             echo
             echo "| Package | Override | Expected status | Notes |"
@@ -38,18 +35,11 @@ jobs:
             echo
             echo "**Claim bar:** trial + \`fail-on: never\`. Not a delete guarantee."
             echo
-            echo "**Try it:** [Action quickstart](https://backpatch.dev/action?utm_source=github\&utm_medium=demo_repo\&utm_campaign=action_try)"
-            if [ "$KEY_SET" = "true" ]; then
-              echo
-              echo "::notice title=Demo mode::BACKPATCH_API_KEY is set but live analysis did not succeed (often 401). Fixture report used instead."
-            else
-              echo
-              echo "::notice title=Demo mode::BACKPATCH_API_KEY missing. Fixture report used instead."
-            fi
+            echo "**Try it:** [Action quickstart](https://backpatch.dev/action?utm_source=github&utm_medium=demo_repo&utm_campaign=action_try)"
           } | tee -a "$GITHUB_STEP_SUMMARY"
-          echo "demo_mode=true" >> "$GITHUB_OUTPUT"
+          echo "::notice title=Demo mode::Live backpatch-action did not succeed; wrote honest fixture report and exiting 0."
           exit 0
 
-      - name: Annotate live PASS
+      - name: Live API succeeded
         if: steps.live.outcome == 'success'
         run: echo "::notice title=Live API::backpatch-action@v1 completed with fail-on: never."
